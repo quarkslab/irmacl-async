@@ -1,0 +1,18 @@
+# for python
+venv/
+venv3/
+*.pyc
+
+# Setuptools distribution folder.
+/dist/
+/build/
+/docs/
+
+# Python egg metadata, regenerated from source files by setuptools.
+/*.egg-info
+/.eggs/
+
+# other
+*~
+.idea
+irma.yml
