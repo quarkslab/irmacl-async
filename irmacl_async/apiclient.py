@@ -143,7 +143,7 @@ class Config:
             if self.cert and self.key:
                 ctx.load_cert_chain(self.cert, self.key)
             if self.ca:
-                ctx.load_verify_location(self.ca)
+                ctx.load_verify_locations(self.ca)
         else:
             ctx.verify_mode = ssl.CERT_NONE
         return ctx
