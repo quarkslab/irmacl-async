@@ -227,7 +227,7 @@ class EicarTestCase(asynctest.TestCase):
 
     def _check_result(self, result, scanid, filelist, statuses,
                       range_finished, range_total):
-        self.assertEqual(result.scan_id, scanid)
+        self.assertEqual(result.scan.id, scanid)
         self.assertTrue(result.name in filelist)
         self.assertIn(result.status, statuses)
         self.assertIsNotNone(result.id)
@@ -237,15 +237,14 @@ class EicarTestCase(asynctest.TestCase):
     def _check_results(self, results, scanid, filelist, statuses,
                        nb_finished, nb_total,
                        none_infos=False, none_results=False):
-        resname_list = sorted([r.name for r in results])
-        self.assertEqual(resname_list, sorted(filelist))
+        self.assertCountEqual([r.name for r in results], filelist)
         for result in results:
             self._check_result(result, scanid, filelist, statuses,
                                nb_finished, nb_total)
             if none_infos is True:
-                self.assertFalse(hasattr(result, 'file_infos'))
+                self.assertIsNone(result.file.md5)
             if none_results is True:
-                self.assertFalse(hasattr(result, 'probe_results'))
+                self.assertIsNone(result.probe_results)
         return
 
     def _check_probe_result(self, probe_results, ref_results):
@@ -314,7 +313,7 @@ class EicarTestCase(asynctest.TestCase):
             start = time.time()
             while not scan.is_finished():
                 self._check_results(
-                        scan.results, scan.id, filenames, [None, 0, 1],
+                        scan.files_ext, scan.id, filenames, [None, 0, 1],
                         range(nb_probes + 1), range(nb_jobs + 1), True, True)
                 time.sleep(BEFORE_NEXT_PROGRESS)
                 now = time.time()
@@ -325,10 +324,10 @@ class EicarTestCase(asynctest.TestCase):
             # if no probe has been run then status should be None
             statuses = [0, 1] if scan.probes_total > 0 else [None]
             self._check_results(
-                    scan.results, scan.id, filenames, statuses,
+                    scan.files_ext, scan.id, filenames, statuses,
                     [scan.probes_total], [scan.probes_total], True, True)
             res = {}
-            for result in scan.results:
+            for result in scan.files_ext:
                 file_result = await api.scans.result(result.id)
                 # if no probe has been run then status should be None
                 statuses = [-1, 0, 1] if file_result.probes_total else [None]

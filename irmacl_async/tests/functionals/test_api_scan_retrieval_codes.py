@@ -41,7 +41,7 @@ class IrmaAPISRCodesTests(asynctest.TestCase):
         probes = [self.probes[0]]
         scan = await self.api.scans.scan(fileslist, force=False, probes=probes)
         res = await self.api.srcodes.new(scan)
-        srcode = res["id"]
+        srcode = res.id
         self.assertEqual(len(srcode), 10)
 
     async def test_srcode_get(self):
@@ -49,42 +49,39 @@ class IrmaAPISRCodesTests(asynctest.TestCase):
         probes = [self.probes[0]]
         scan = await self.api.scans.scan(fileslist, force=False, probes=probes)
         res = await self.api.srcodes.new(scan)
-        srcode = res["id"]
+        srcode = res.id
         res = await self.api.srcodes.get(srcode)
-        self.assertEqual(len(res["results"]), len(fileslist))
+        self.assertEqual(len(res.files_ext), len(fileslist))
 
     async def test_srcode_get_file(self):
         scan = await self.api.scans.scan(FILEPATHS, force=False,
                                          linger=True,
                                          probes=self.probes)
         res = await self.api.srcodes.new(scan)
-        srcode = res["id"]
+        srcode = res.id
         res = await self.api.srcodes.get(srcode)
-        results = res["results"]
+        results = res.files_ext
         print("Results: {}".format(results))
         for r in results:
-            if r["name"] == "eicar.com":
+            if r.name == "eicar.com":
                 virus_file = r
             else:
                 clean_file = r
-        self.assertEqual(virus_file["status"], 1)
-        self.assertEqual(clean_file["status"], 0)
+        self.assertEqual(virus_file.status, 1)
+        self.assertEqual(clean_file.status, 0)
 
     async def test_srcode_download_clean_file(self):
-        scan = await self.api.scans.scan(FILEPATHS, force=False,
-                                         linger=True,
-                                         probes=self.probes)
-        res = await self.api.srcodes.new(scan)
-        srcode = res["id"]
-        res = await self.api.srcodes.get(srcode)
-        results = res["results"]
-        for r in results:
-            if r["name"] == "fish":
+        scan = await self.api.scans.scan(
+                FILEPATHS, force=False, linger=True, probes=self.probes)
+        srcode = await self.api.srcodes.new(scan)
+        qscan = await self.api.srcodes.get(srcode)
+        for r in qscan.files_ext:
+            if r.name == "fish":
                 clean_file = r
         dst = tempfile.NamedTemporaryFile(delete=False)
         await self.api.srcodes.download_file(
                 srcode,
-                clean_file["id"],
+                clean_file.id,
                 Path(dst.name))
         h = hashlib.sha256()
         with Path(dst.name).open("rb") as f:
@@ -98,17 +95,17 @@ class IrmaAPISRCodesTests(asynctest.TestCase):
                                          linger=True,
                                          probes=self.probes)
         res = await self.api.srcodes.new(scan)
-        srcode = res["id"]
+        srcode = res.id
         res = await self.api.srcodes.get(srcode)
-        results = res["results"]
+        results = res.files_ext
         for r in results:
-            if r["name"] == "eicar.com":
+            if r.name == "eicar.com":
                 virus_file = r
         dst = tempfile.NamedTemporaryFile(delete=False)
         with self.assertRaises(IrmaError):
             await self.api.srcodes.download_file(
                     srcode,
-                    virus_file["id"],
+                    virus_file.id,
                     Path(dst.name))
 
     async def test_srcode_download_clean_file_wrong_srcode(self):
@@ -116,23 +113,23 @@ class IrmaAPISRCodesTests(asynctest.TestCase):
                                          linger=True,
                                          probes=self.probes)
         res = await self.api.srcodes.new(scan)
-        srcode1 = res["id"]
+        srcode1 = res.id
 
         scan = await self.api.scans.scan(FILEPATHS, force=False,
                                          linger=True,
                                          probes=self.probes)
         res = await self.api.srcodes.new(scan)
-        srcode2 = res["id"]
+        srcode2 = res.id
         res = await self.api.srcodes.get(srcode2)
-        results = res["results"]
+        results = res.files_ext
         for r in results:
-            if r["name"] == "fish":
+            if r.name == "fish":
                 clean_file = r
         dst = tempfile.NamedTemporaryFile(delete=False)
         with self.assertRaises(IrmaError):
             await self.api.srcodes.download_file(
                     srcode1,
-                    clean_file["id"],
+                    clean_file.id,
                     Path(dst.name))
 
 

@@ -33,7 +33,7 @@ setup(
     packages=['irmacl_async'],
     install_requires=[
         'aiohttp==3.3.2',
-        'marshmallow==2.15.3',
+        'irma-shared==2.0.0b2',
         'pyyaml'
         ],
     include_package_data=True,

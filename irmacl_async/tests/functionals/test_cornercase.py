@@ -34,7 +34,7 @@ class TestCornerCase(asynctest.TestCase):
         async with AAPI() as api:
             scan = await api.scans.scan(UTF8_PATHS, linger=True, force=False)
 
-            results = [api.scans.result(res.id) for res in scan.results]
+            results = [api.scans.result(res.id) for res in scan.files_ext]
             results = await asyncio.gather(*results)
             filenames = [res.name for res in results]
             self.assertCountEqual(filenames, UTF8_SAMPLES)
@@ -60,7 +60,7 @@ class TestCornerCase(asynctest.TestCase):
             sample = SAMPLES_DIR / ZIP_SAMPLE
             scan = await api.scans.scan(
                 [sample], raw=True, linger=True, probes=[probe], force=True)
-            self.assertEqual(len(scan.results), 2)
+            self.assertEqual(len(scan.files_ext), 2)
             self.assertEqual(scan.probes_finished, 1)
 
 
