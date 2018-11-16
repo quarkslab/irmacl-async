@@ -84,7 +84,7 @@ class IrmaAPISRCodesTests(asynctest.TestCase):
         dst = tempfile.NamedTemporaryFile(delete=False)
         await self.api.srcodes.download_file(
                 srcode,
-                clean_file["result_id"],
+                clean_file["id"],
                 Path(dst.name))
         h = hashlib.sha256()
         with Path(dst.name).open("rb") as f:
@@ -108,7 +108,7 @@ class IrmaAPISRCodesTests(asynctest.TestCase):
         with self.assertRaises(IrmaError):
             await self.api.srcodes.download_file(
                     srcode,
-                    virus_file["result_id"],
+                    virus_file["id"],
                     Path(dst.name))
 
     async def test_srcode_download_clean_file_wrong_srcode(self):
@@ -132,7 +132,7 @@ class IrmaAPISRCodesTests(asynctest.TestCase):
         with self.assertRaises(IrmaError):
             await self.api.srcodes.download_file(
                     srcode1,
-                    clean_file["result_id"],
+                    clean_file["id"],
                     Path(dst.name))
 
 

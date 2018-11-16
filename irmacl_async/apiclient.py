@@ -772,8 +772,14 @@ class ScansAAPI(AAPIView):
 
         """
         route = "/scans/{}/cancel".format(apiid(scan))
-        res = await self._post(route, session)
-        return self._format(res, raw, schema=IrmaScanSchema())
+        try:
+            res = await self._post(route, session)
+            return self._format(res, raw, schema=IrmaScanSchema())
+        except aiohttp.ClientResponseError as e:
+            if e.status == 400:
+                raise IrmaError(
+                    "Scan {} finished, cannot cancel it".format(apiid(scan)))
+            raise
 
 
 class SRCodeAAPI(AAPIView):
