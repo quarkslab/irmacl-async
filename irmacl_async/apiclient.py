@@ -13,14 +13,15 @@
 # modified, propagated, or distributed except according to the
 # terms contained in the LICENSE file.
 
-import asyncio
 import aiohttp
+import asyncio
 import copy
 import functools
 import json
 import logging
 import os
 from pathlib import Path
+from pkg_resources import parse_version
 import ssl
 import types
 import yaml
@@ -162,7 +163,8 @@ class Config:
 
 class AAPI:
 
-    IRMA_VERSION = "v2.2.2"
+    IRMA_VERSION_MIN = parse_version("v2.4.0")
+    IRMA_VERSION_MAX = parse_version("v3.0.0a0")
 
     def __init__(
             self, config=None, *, apicheck=True, timeout=15, limit=None,
@@ -210,15 +212,14 @@ class AAPI:
                 timeout=self._timeout, loop=self._loop).__aenter__()
 
         if self.apicheck:
-            from pkg_resources import parse_version
-            version = await self.about(raw=False)
-            version = version["version"]
-            if parse_version(version) == parse_version(self.IRMA_VERSION):
+            try:
+                await self.check_version()
                 logger.info("Check API version: OK")
-            else:
+            except RuntimeWarning as e:
                 logger.warning(
-                    "Check API version: IRMA version (%s) mismatch irmacl"
-                    " expected version (%s)", version, self.IRMA_VERSION)
+                    "Check API version: IRMA version (%s) not included in"
+                    " compatibility range [%s, %s[", e,
+                    self.IRMA_VERSION_MIN, self.IRMA_VERSION_MAX)
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
@@ -340,6 +341,18 @@ class AAPI:
         """
         res = await self._get("/about", session)
         return self._format(res, raw)
+
+    async def check_version(self):
+        """ Check that the queried IRMA API is compatible with this version of
+            irmacl-async
+
+        :raises: RuntimeWarning if incompatible versions
+
+        """
+        version = await self.about(raw=False)
+        version = parse_version(version["version"])
+        if not (self.IRMA_VERSION_MIN <= version < self.IRMA_VERSION_MAX):
+            raise RuntimeWarning(version)
 
     async def login(self, username=None, password=None, session=None):
         """ Authenticate onto IRMA and set the headers accordingly
