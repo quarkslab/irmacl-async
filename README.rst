@@ -32,7 +32,7 @@ Configuration
 Irmacl-async configuration is done with a ``Config`` object that should be
 given to ``AAPI`` at initialisation. The details of expected configuration is
 available with ``help(Config)``. A ``Config`` object can be initialized from an
-irma.conf file, which is a yaml file containing the parameters of a ``Config``
+irma.yml file, which is a yaml file containing the parameters of a ``Config``
 object.  All parameters are optional.
 
 .. code-block:: yaml
@@ -45,14 +45,14 @@ object.  All parameters are optional.
    submitter: kiosk
    submitter_id: kiosk-D205
 
-irma.conf is searched in these locations in following order:
+irma.yml is searched in these locations in following order:
 
 * current directory
 * environment variable *IRMA_CONF*
 * user home directory
 * global directory  */etc/irma*
 
-Once you set up a working irma.conf settings file, you could run tests on your
+Once you set up a working irma.yml settings file, you could run tests on your
 running IRMA server:
 
 .. code-block:: console
