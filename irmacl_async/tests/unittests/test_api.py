@@ -136,12 +136,14 @@ class TestConfig(asynctest.TestCase):
     @patch("irmacl_async.apiclient.ssl")
     def test_ssl0(self, m_ssl):
         config = module.Config(verify=False, ca="/foo/bar.pem")
-        m_ctx = m_ssl.SSLContext.return_value
+        import ssl  # Reimport the real ssl for spec
+        m_ssl.SSLContext.return_value = m_ctx = Mock(spec=ssl.SSLContext)
 
         ctx = config.ssl
 
-        self.assertEqual(ctx.verify_mode, module.ssl.CERT_NONE)
-        m_ctx.load_verify_location.assert_not_called()
+        self.assertIs(ctx, m_ctx)
+        self.assertEqual(ctx.verify_mode, m_ssl.CERT_NONE)
+        ctx.load_verify_locations.assert_not_called()
 
     @patch("irmacl_async.apiclient.ssl")
     def test_ssl1(self, m_ssl):
@@ -152,7 +154,7 @@ class TestConfig(asynctest.TestCase):
 
         self.assertEqual(ctx.verify_mode, module.ssl.CERT_REQUIRED)
         m_ctx.load_cert_chain.assert_called_once_with("/foo.pem", "/bar.key")
-        m_ctx.load_verify_location.assert_called_once_with("/baz.pem")
+        m_ctx.load_verify_locations.assert_called_once_with("/baz.pem")
 
 
 class TestAAPI(asynctest.TestCase):
