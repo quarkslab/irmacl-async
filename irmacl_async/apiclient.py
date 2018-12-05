@@ -22,11 +22,22 @@ import logging
 import os
 from pathlib import Path
 import ssl
+import types
 import yaml
 
-from .schemas import IrmaTagSchema,\
-    IrmaFileExtSchema, IrmaFileResultSchema, \
-    Paginated, IrmaScanSchema, apiid, IrmaProbeListSchema
+from irma.shared.schemas import (
+    apiid,
+    ValidationError,
+)
+from irma.shared.schemas.v2 import (
+    FileExtSchema,
+    FileResultSchema,
+    Paginated,
+    ScanRetrievalCodeSchema,
+    ScanSchema,
+    SRScanSchema,
+    TagSchema,
+)
 
 
 __all__ = ['AAPI', 'Config', 'IrmaError']
@@ -285,10 +296,17 @@ class AAPI:
         elif schema is None:
             return json.loads(res.decode())
         else:
-            deserialized = schema.loads(res.decode())
-            if deserialized.errors:
-                logger.error("deserialisation failed: %s", deserialized.errors)
-            return deserialized.data
+            try:
+                if isinstance(schema, (types.MethodType, types.FunctionType)):
+                    # Dynamically load schema based on input data
+                    res = json.loads(res.decode())
+                    schema = schema(res)()
+                    return schema.load(res)
+                else:
+                    return schema.loads(res.decode())
+            except ValidationError as e:
+                logger.error("deserialisation failed: %s", e)
+                logger.info("deserialisation failed - data: %s", e.data)
 
     def _askpage(self, offset=None, limit=None, query=None):
         """ Construct a query for asking a page of a paginated result
@@ -406,7 +424,7 @@ class TagsAAPI(AAPIView):
         res = await self._get("/tags", session)
         # TODO: cleanup. It is ugly to use a paginated schema to process an
         # unpaginated result
-        return self._format(res, raw, schema=Paginated(IrmaTagSchema)(
+        return self._format(res, raw, schema=Paginated(TagSchema)(
             only=("items",)))["items"]
 
     async def new(self, text, quiet=False, session=None, raw=None):
@@ -423,7 +441,7 @@ class TagsAAPI(AAPIView):
         data = {"text": text}
         try:
             res = await self._post("/tags", session, data=data)
-            return self._format(res, raw, schema=IrmaTagSchema())
+            return self._format(res, raw, schema=TagSchema())
         except aiohttp.ClientResponseError as e:
             logger.warning(e)
             if not (quiet and e.status == 400):
@@ -441,7 +459,7 @@ class ProbesAAPI(AAPIView):
 
         """
         res = await self._get("/probes", session)
-        return self._format(res, raw, schema=IrmaProbeListSchema())
+        return self._format(res, raw)["data"]
 
 
 class FilesAAPI(AAPIView):
@@ -493,7 +511,7 @@ class FilesAAPI(AAPIView):
         try:
             res = await self._get("/files", session, query)
             schema = Paginated(
-                    IrmaFileExtSchema,
+                    FileExtSchema,
                     exclude=('probe_results',)
                 )(exclude=('data',))
             return self._format(res, raw, schema=schema)
@@ -517,7 +535,7 @@ class FilesAAPI(AAPIView):
         route = "/files/{}".format(apiid(file))
         query = self._askpage(offset, limit)
         res = await self._get(route, session, query)
-        return self._format(res, raw, schema=IrmaFileResultSchema())
+        return self._format(res, raw, schema=FileResultSchema())
 
     async def add_tag(
             self, file, tag, quiet=False, session=None):
@@ -590,7 +608,7 @@ class FilesAAPI(AAPIView):
         """
         data = self._prepare_file(content, filename)
         res = await self._post("/files_ext", session, data=data)
-        return self._format(res, raw, schema=IrmaFileExtSchema())
+        return self._format(res, raw, schema=FileExtSchema.dynschema)
 
     async def download(
             self, file, dstpath, session=None):
@@ -622,7 +640,7 @@ class ScansAAPI(AAPIView):
         """
         query = self._askpage(offset, limit)
         res = await self._get('/scans', session, query)
-        schema = Paginated(IrmaScanSchema)(exclude=("items",))
+        schema = Paginated(ScanSchema)(exclude=("items",))
         return self._format(res, raw, schema=schema)
 
     async def get(self, scan, session=None, raw=None):
@@ -637,7 +655,7 @@ class ScansAAPI(AAPIView):
         """
         route = "/scans/{}".format(apiid(scan))
         res = await self._get(route, session)
-        return self._format(res, raw, schema=IrmaScanSchema())
+        return self._format(res, raw, schema=ScanSchema())
 
     async def waitfor(self, scan, session=None, raw=None):
         """ Wait for a scan to be finished and return it
@@ -670,7 +688,7 @@ class ScansAAPI(AAPIView):
         route = "/files_ext/{}".format(apiid(fileext))
         query = {"formatted": "no"} if full else {}
         res = await self._get(route, session, query)
-        return self._format(res, raw, schema=IrmaFileExtSchema())
+        return self._format(res, raw, schema=FileExtSchema.dynschema)
 
     async def new(self, session=None, raw=None):
         """ Create a new empty scan
@@ -681,7 +699,7 @@ class ScansAAPI(AAPIView):
 
         """
         res = await self._post("/scans", session)
-        return self._format(res, raw, schema=IrmaScanSchema())
+        return self._format(res, raw, schema=ScanSchema())
 
     async def launch(
             self, fileexts, session=None, raw=None, linger=False, *,
@@ -716,10 +734,10 @@ class ScansAAPI(AAPIView):
         }
         res = await self._post("/scans", session, json=data)
         if linger:
-            scan = self._format(res, raw=False, schema=IrmaScanSchema())
+            scan = self._format(res, raw=False, schema=ScanSchema())
             return await self.waitfor(scan, session, raw)
         else:
-            return self._format(res, raw, schema=IrmaScanSchema())
+            return self._format(res, raw, schema=ScanSchema())
 
     async def scan(
             self, srcpaths, session=None, raw=None, linger=False, *,
@@ -749,10 +767,10 @@ class ScansAAPI(AAPIView):
                 data = self.api.files._prepare_file(src, srcpath.as_posix())
                 res = await self._post("/scans/quick", session, data=data)
             if linger:
-                scan = self._format(res, raw=False, schema=IrmaScanSchema())
+                scan = self._format(res, raw=False, schema=ScanSchema())
                 return await self.waitfor(scan, session, raw)
             else:
-                return self._format(res, raw, schema=IrmaScanSchema())
+                return self._format(res, raw, schema=ScanSchema())
         else:
             files = [self.api.files.upload(p) for p in srcpaths]
             files = await asyncio.gather(*files)
@@ -769,12 +787,13 @@ class ScansAAPI(AAPIView):
         :param raw: bool, return unprocessed bytes (default None)
         :returns: the canceled scan
         :raises: aiohttp.ClientResponseError
+        :raises: IrmaError if the scan is already finished
 
         """
         route = "/scans/{}/cancel".format(apiid(scan))
         try:
             res = await self._post(route, session)
-            return self._format(res, raw, schema=IrmaScanSchema())
+            return self._format(res, raw, schema=ScanSchema())
         except aiohttp.ClientResponseError as e:
             if e.status == 400:
                 raise IrmaError(
@@ -795,7 +814,7 @@ class SRCodeAAPI(AAPIView):
         """
         data = {"scan_id": apiid(scan)}
         res = await self._post("/scan_retrieval_codes", session, data=data)
-        return self._format(res, raw)
+        return self._format(res, raw, schema=ScanRetrievalCodeSchema())
 
     async def get(self, srcode, session=None, raw=None):
         """ Get a scan by srcode
@@ -808,7 +827,7 @@ class SRCodeAAPI(AAPIView):
         """
         route = "/scan_retrieval_codes/{}".format(apiid(srcode))
         res = await self._get(route, session)
-        return self._format(res, raw)
+        return self._format(res, raw, schema=SRScanSchema())
 
     async def get_file(self, srcode, file, session=None, raw=None):
         """ Get file details in a scan identified by srcode
@@ -824,7 +843,7 @@ class SRCodeAAPI(AAPIView):
                 apiid(srcode),
                 apiid(file))
         res = await self._get(route, session)
-        return self._format(res, raw)
+        return self._format(res, raw, schema=FileExtSchema.dynschema)
 
     async def download_file(
             self, srcode, file, dstpath, session=None):

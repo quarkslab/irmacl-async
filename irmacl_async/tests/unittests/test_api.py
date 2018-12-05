@@ -322,7 +322,7 @@ class TestAAPI(asynctest.TestCase):
 
         res = self.api._format(data, raw=None, schema=schema)
 
-        self.assertIs(res, schema.loads.return_value.data)
+        self.assertIs(res, schema.loads.return_value)
         schema.loads.assert_called_once_with(data.decode())
 
     async def test__askpage0(self):
@@ -380,7 +380,7 @@ class TestTagsAAPI(TestAAPI):
 
         self.api._get.assert_awaited_once_with("/tags", None)
         self.assertEqual(
-            res, [module.IrmaTagSchema().load({"id": 3, "text": "foo"}).data])
+            res, [module.TagSchema().load({"id": 3, "text": "foo"})])
 
     async def test_new0(self):
         self.api._post = CoroutineMock(
@@ -391,7 +391,7 @@ class TestTagsAAPI(TestAAPI):
         self.api._post.assert_awaited_once_with(
             "/tags", None, data={"text": "foo"})
         self.assertEqual(
-            res, module.IrmaTagSchema().load({"id": 3, "text": "foo"}).data)
+            res, module.TagSchema().load({"id": 3, "text": "foo"}))
 
     async def test_new1(self):
         e = module.aiohttp.ClientResponseError("request_info", "history")
@@ -469,7 +469,8 @@ class TestFilesAAPI(TestAAPI):
             "/files", None, {"tags": "1,2,3", "limit": 4})
 
     async def test_results(self):
-        self.api._get = CoroutineMock(return_value=b"{}")
+        self.api._get = CoroutineMock(
+                return_value=b'{"id": "someid", "file_sha256": "12..45"}')
 
         await self.api.files.results("sha256", offset=2)
 
@@ -529,7 +530,8 @@ class TestFilesAAPI(TestAAPI):
 
     async def test_new(self):
         filesapi = self.api.files
-        self.api._post = CoroutineMock(return_value=b"{}")
+        self.api._post = CoroutineMock(
+                return_value=b'{"id": "someid", "file_sha256": "12..45"}')
         filesapi._prepare_file = Mock(return_value="data")
 
         await filesapi.new("content", "/foo/bar")
@@ -567,20 +569,20 @@ class TestScanAAPI(TestAAPI):
 
     async def test_waitfor(self):
         scansapi = self.api.scans
-        scanschema = module.IrmaScanSchema()
+        scanschema = module.ScanSchema()
         scansapi.get = CoroutineMock(side_effect=(
             scanschema.load(
                 {"id": "127d134f-0e1e-4238-87b4-29ee87ebe60a", "status": 30}
-                ).data,
+                ),
             scanschema.load(
                 {"id": "127d134f-0e1e-4238-87b4-29ee87ebe60a", "status": 40}
-                ).data,
+                ),
             scanschema.load(
                 {"id": "127d134f-0e1e-4238-87b4-29ee87ebe60a", "status": 50}
-                ).data,
+                ),
             scanschema.load(
                 {"id": "127d134f-0e1e-4238-87b4-29ee87ebe60a", "status": 50}
-                ).data,
+                ),
         ))
 
         await scansapi.waitfor("127d134f-0e1e-4238-87b4-29ee87ebe60a")
@@ -588,7 +590,8 @@ class TestScanAAPI(TestAAPI):
         self.assertEqual(scansapi.get.call_count, 4)
 
     async def test_result(self):
-        self.api._get = CoroutineMock(return_value=b'{"id": "someid"}')
+        self.api._get = CoroutineMock(
+                return_value=b'{"id": "someid", "file_sha256": "12..45"}')
 
         await self.api.scans.result("fileext-uuid", full=True)
 
@@ -640,8 +643,8 @@ class TestScanAAPI(TestAAPI):
                 }})
 
         scansapi.waitfor.assert_awaited_once_with(
-            module.IrmaScanSchema(only=('id',))
-                .loads(self.api._post.return_value.decode()).data,
+            module.ScanSchema(only=('id',))
+                .loads(self.api._post.return_value.decode()),
             None, None)
 
     async def test_scan0(self):
@@ -671,8 +674,8 @@ class TestScanAAPI(TestAAPI):
         scansapi._post.assert_awaited_once_with(
             "/scans/quick", None, data="data")
         scansapi.waitfor.assert_awaited_once_with(
-            module.IrmaScanSchema(only=('id',))
-                .loads(scansapi._post.return_value.decode()).data,
+            module.ScanSchema(only=('id',))
+                .loads(scansapi._post.return_value.decode()),
             None, None)
 
     async def test_scan2(self):
@@ -718,7 +721,8 @@ class TestScanRetrievalCodeAAPI(TestAAPI):
             "/scan_retrieval_codes/srcode-id", None)
 
     async def test_get_file(self):
-        self.api._get = CoroutineMock(return_value=b'{"id": "somefileid"}')
+        self.api._get = CoroutineMock(
+            return_value=b'{"id": "somefileid", "file_sha256": "12..45"}')
 
         await self.api.srcodes.get_file(srcode="srcode-id", file="file-id")
 

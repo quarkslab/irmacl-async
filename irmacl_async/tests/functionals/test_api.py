@@ -53,8 +53,8 @@ class IrmaAPITests(asynctest.TestCase):
         nb_files = len(filelist)
         self.assertEqual(scan.id, scanid)
         self.assertIn(scan.pstatus, range_status)
-        self.assertEqual(type(scan.results), list)
-        self.assertEqual(len(scan.results), nb_files)
+        self.assertEqual(type(scan.files_ext), list)
+        self.assertEqual(len(scan.files_ext), nb_files)
         self.assertIn(scan.probes_finished, range_finished)
         self.assertIn(scan.probes_total, range_total)
         self.assertEqual(scan.force, force)
@@ -75,13 +75,13 @@ class IrmaAPIScanTests(IrmaAPITests):
     async def test_files_upload(self):
         fw = await self.api.files.upload(FILEPATHS[0])
         self.assertEqual(fw.name, FILENAMES[0])
-        self.assertIsNone(fw.scan_id)
+        self.assertIsNone(fw.scan)
 
     async def test_files_new(self):
         fpath = FILEPATHS[0]
         fw = await self.api.files.new(fpath.read_bytes(), fpath.name)
         self.assertEqual(fw.name, fpath.name)
-        self.assertIsNone(fw.scan_id)
+        self.assertIsNone(fw.scan)
 
     async def test_scan_launch(self):
         nb_jobs = len(FILENAMES) * len(self.probes)
@@ -192,7 +192,7 @@ class IrmaAPIScanTests(IrmaAPITests):
         scan = await self.api.scans.scan(
                 FILEPATHS, linger=True, mimetype_filtering=False)
 
-        for result in scan.results:
+        for result in scan.files_ext:
             self.assertTrue(self._validate_uuid(result.id))
             res = await self.api.scans.result(result.id)
             self.assertIn(res.name, FILENAMES)
@@ -204,7 +204,7 @@ class IrmaAPIScanTests(IrmaAPITests):
         scan = await self.api.scans.scan(
                 FILEPATHS, linger=True, mimetype_filtering=False)
 
-        for result in scan.results:
+        for result in scan.files_ext:
             self.assertTrue(self._validate_uuid(result.id))
             res = await self.api.scans.result(result.id, full=True)
             self.assertIn(res.name, FILENAMES)
@@ -315,14 +315,14 @@ class IrmaAPITagTests(IrmaAPITests):
             # Insure file is present (Force=False)
             scan = await api.scans.scan(
                     [self.file_path], linger=True, force=False)
-            self.result = await api.scans.result(scan.results[0])
+            self.result = await api.scans.result(scan.files_ext[0])
             # Insure file got no tags for test
             self.former_tags = self.result.file_infos.tags
             if self.former_tags:
                 removals = [api.files.remove_tag(self.file_sha256, tag)
                             for tag in self.former_tags]
                 await asyncio.gather(*removals)
-                self.result = api.scans.result(scan.results[0])
+                self.result = await api.scans.result(scan.files_ext[0])
 
     async def tearDown(self):
         async with AAPI() as api:
