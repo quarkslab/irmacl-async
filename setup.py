@@ -23,7 +23,7 @@ def readme():
 
 setup(
     name='irmacl-async',
-    version='2.0.0',
+    version='2.1.0b1',
     description='Irma asynchronous command line tool for API v2',
     long_description=readme(),
     url='https://github.com/quarkslab/irmacl-async',
@@ -33,7 +33,7 @@ setup(
     packages=['irmacl_async'],
     install_requires=[
         'aiohttp==3.3.2',
-        'irma-shared==2.0.0b2',
+        'irma-shared>=2.0.0b2',
         'pyyaml'
         ],
     include_package_data=True,
