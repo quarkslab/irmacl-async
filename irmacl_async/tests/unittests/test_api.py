@@ -174,8 +174,9 @@ class TestAAPI(asynctest.TestCase):
     async def test_context0(self, m_ClientSession, m_logger):
         m_logger.info = Mock()
         m_ClientSession.return_value = MagicMock()
-        self.api.about = CoroutineMock(return_value={"version": "2.2.2"})
-        self.api.login = CoroutineMock()
+        self.api.apicheck = False
+        self.api.check_version = CoroutineMock()
+
         async with self.api:
             pass
 
@@ -184,15 +185,15 @@ class TestAAPI(asynctest.TestCase):
         m_ClientSession.return_value\
             .__aenter__.return_value\
             .__aexit__.assert_awaited_once()
-        self.assertEqual(m_logger.info.call_count, 1)
+        self.api.check_version.assert_not_awaited()
 
     @patch("irmacl_async.apiclient.logger")
     @patch("aiohttp.ClientSession")
     async def test_context1(self, m_ClientSession, m_logger):
         m_logger.info = Mock()
         m_ClientSession.return_value = MagicMock()
-        self.api.about = CoroutineMock(return_value={"version": "2.2.2"})
-        self.api.login = CoroutineMock()
+        self.api.check_version = CoroutineMock()
+
         async with self.api.tags:
             pass
 
@@ -208,8 +209,7 @@ class TestAAPI(asynctest.TestCase):
     async def test_context2(self, m_ClientSession, m_logger):
         m_logger.warning = Mock()
         m_ClientSession.return_value = MagicMock()
-        self.api.about = CoroutineMock(return_value={"version": "2.2.3"})
-        self.api.login = CoroutineMock()
+        self.api.check_version = CoroutineMock(side_effect=RuntimeWarning)
 
         async with self.api:
             pass
@@ -347,6 +347,23 @@ class TestAAPI(asynctest.TestCase):
 
         self.api._get.assert_awaited_once_with("/about", "session")
         self.assertEqual(res, {"version": "1.2.3"})
+
+    async def test_check_version0(self):
+        self.api.about = CoroutineMock(return_value={"version": "2.1.0"})
+
+        with self.assertRaises(RuntimeWarning):
+            await self.api.check_version()
+
+    async def test_check_version1(self):
+        self.api.about = CoroutineMock(return_value={"version": "2.4.3"})
+
+        await self.api.check_version()
+
+    async def test_check_version2(self):
+        self.api.about = CoroutineMock(return_value={"version": "3.0.0"})
+
+        with self.assertRaises(RuntimeWarning):
+            await self.api.check_version()
 
     async def test_login(self):
         self.api._bare_post = CoroutineMock(
