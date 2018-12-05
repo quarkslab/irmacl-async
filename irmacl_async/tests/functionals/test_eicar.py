@@ -179,7 +179,7 @@ EICAR_RESULTS = {
             "duration": MAXTIME_FAST_PROBE,
         },
         "LIEF": {
-            "status": 1,
+            "status": 0,
             "results": NOT_CHECKED,
             "version": "0.8.3-18d5b75",
             "duration": MAXTIME_FAST_PROBE,
@@ -303,7 +303,7 @@ class EicarTestCase(asynctest.TestCase):
         return
 
     async def _test_scan_file(
-            self, filelist, probelist, force=True, mimetype_filtering=None,
+            self, filelist, probelist, force=True, mimetype_filtering=False,
             resubmit_files=None, timeout=SCAN_TIMEOUT_SEC):
         nb_probes = len(probelist)
         nb_files = len(filelist)
