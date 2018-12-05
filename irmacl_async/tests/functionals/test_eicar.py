@@ -44,6 +44,12 @@ EICAR_RESULTS = {
             "version": "2.1.1",
             "duration": MAXTIME_NORMAL_PROBE,
         },
+        "Avira (Linux)": {
+            "status": 1,
+            "results": "Eicar-Test-Signature",
+            "version": "1.9.150.0",
+            "duration": MAXTIME_NORMAL_PROBE,
+        },
         "Bitdefender Antivirus Scanner (Linux)": {
             "status": 1,
             "results": r"EICAR-Test-File \(not a virus\)",
@@ -173,7 +179,7 @@ EICAR_RESULTS = {
             "duration": MAXTIME_FAST_PROBE,
         },
         "LIEF": {
-            "status": 1,
+            "status": 0,
             "results": NOT_CHECKED,
             "version": "0.8.3-18d5b75",
             "duration": MAXTIME_FAST_PROBE,
@@ -297,7 +303,7 @@ class EicarTestCase(asynctest.TestCase):
         return
 
     async def _test_scan_file(
-            self, filelist, probelist, force=True, mimetype_filtering=None,
+            self, filelist, probelist, force=True, mimetype_filtering=False,
             resubmit_files=None, timeout=SCAN_TIMEOUT_SEC):
         nb_probes = len(probelist)
         nb_files = len(filelist)
@@ -360,6 +366,9 @@ class IrmaEicarTest(EicarTestCase):
 
     async def test_scan_avast(self):
         await self._scan_eicar('AvastCoreSecurity')
+
+    async def test_scan_avira(self):
+        await self._scan_eicar('Avira')
 
     async def test_scan_bitdefender(self):
         await self._scan_eicar('BitdefenderForUnices')
