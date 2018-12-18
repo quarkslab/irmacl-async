@@ -149,7 +149,7 @@ class Config:
 
     @property
     def ssl(self):
-        ctx = ssl.SSLContext()
+        ctx = ssl.create_default_context()
         if self.verify:
             ctx.verify_mode = ssl.CERT_REQUIRED
             if self.cert and self.key:
@@ -157,6 +157,7 @@ class Config:
             if self.ca:
                 ctx.load_verify_locations(self.ca)
         else:
+            ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
         return ctx
 
