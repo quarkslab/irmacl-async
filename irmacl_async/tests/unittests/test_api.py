@@ -137,7 +137,8 @@ class TestConfig(asynctest.TestCase):
     def test_ssl0(self, m_ssl):
         config = module.Config(verify=False, ca="/foo/bar.pem")
         import ssl  # Reimport the real ssl for spec
-        m_ssl.SSLContext.return_value = m_ctx = Mock(spec=ssl.SSLContext)
+        m_ssl.create_default_context.return_value = m_ctx = Mock(
+                spec=ssl.SSLContext)
 
         ctx = config.ssl
 
@@ -148,7 +149,7 @@ class TestConfig(asynctest.TestCase):
     @patch("irmacl_async.apiclient.ssl")
     def test_ssl1(self, m_ssl):
         config = module.Config(cert="/foo.pem", key="/bar.key", ca="/baz.pem")
-        m_ctx = m_ssl.SSLContext.return_value
+        m_ctx = m_ssl.create_default_context.return_value
 
         ctx = config.ssl
 
