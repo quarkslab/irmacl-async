@@ -17,6 +17,7 @@ import os
 import hashlib
 import tempfile
 from irmacl_async import AAPI, IrmaError
+import aiohttp
 from pathlib import Path
 
 
@@ -27,11 +28,30 @@ FILEPATHS = list(SAMPLES_DIR / Path(x) for x in FILENAMES)
 HASH = "7cddf3fa0f8563d49d0e272208290fe8fdc627e5cae0083d4b7ecf901b2ab6c8"
 
 
+async def srcode_api_enabled():
+    try:
+        async with AAPI() as api:
+            # Try to create a srcode with a wrong parameter
+            # if srcode api is enabled it will respond 400 - bad request
+            # else 404 not found
+            await api.srcodes.new('')
+    except aiohttp.ClientResponseError as e:
+        if e.status == 400:
+            return True
+        elif e.status == 404:
+            return False
+        else:
+            raise e
+
+
 class IrmaAPISRCodesTests(asynctest.TestCase):
 
     async def setUp(self):
         self.api = await AAPI().__aenter__()
         self.probes = await self.api.probes.list()
+        if not await srcode_api_enabled():
+            raise asynctest.SkipTest(
+                "Skipping srcode API disabled")
 
     async def tearDown(self):
         await self.api.__aexit__(None, None, None)
