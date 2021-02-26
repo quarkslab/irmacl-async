@@ -32,7 +32,7 @@ setup(
     license='ApacheV2',
     packages=['irmacl_async'],
     install_requires=[
-        'aiohttp==3.3.2',
+        'aiohttp==3.7.4',
         'irma-shared>=2.0.0b2',
         'pyyaml'
         ],
